@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexGen AI School Merch</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Three.js for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Tailwind Config for Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            light: '#1e293b',
+                            accent: '#06b6d4', // Cyan
+                            purple: '#a855f7',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* 3D Card Hover Effect */
+        .card-3d {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .card-3d:hover {
+            transform: translateY(-10px) rotateX(5deg) rotateY(-5deg) scale(1.03);
+            box-shadow: -10px 15px 30px rgba(6, 182, 212, 0.2), 10px 15px 30px rgba(168, 85, 247, 0.2);
+            border-color: rgba(6, 182, 212, 0.6);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+        /* Slider Styles */
+        .slider-container {
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none; /* Firefox */
+        }
+        .slider-container::-webkit-scrollbar { display: none; /* Chrome */ }
+        .slider-item { scroll-snap-align: start; }
+
+        /* Animated Gradient Text */
+        .text-gradient {
+            background: linear-gradient(to right, #06b6d4, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% auto;
+            animation: shine 3s linear infinite;
+        }
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* Cart Slide-in */
+        #cart-sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .cart-open { transform: translateX(0%); }
+        .cart-closed { transform: translateX(100%); }
+
+        /* Toast Notification */
+        .toast {
+            transition: opacity 0.3s, transform 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="antialiased relative min-h-screen flex flex-col">
+
+    <!-- 3D Canvas Background -->
+    <div id="bg-canvas"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-brand-purple flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+                        <i class="fa-solid fa-cube text-white text-xl"></i>
+                    </div>
+                    <span class="font-bold text-2xl tracking-tight text-white">Nex<span class="text-gradient">Gen</span> Merch</span>
+                </div>
+
+                <!-- AI Search Bar (Desktop) -->
+                <div class="hidden md:flex flex-1 max-w-lg mx-8 relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-robot text-brand-accent group-focus-within:animate-pulse"></i>
+                    </div>
+                    <input type="text" class="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-full leading-5 bg-slate-800/50 text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm transition-all shadow-inner backdrop-blur-md" placeholder="Ask AI: 'Show me premium black hoodies...'">
+                    <button class="absolute inset-y-1 right-1 px-4 bg-brand-accent/20 text-brand-accent rounded-full text-xs font-semibold hover:bg-brand-accent hover:text-white transition-colors">
+                        Search
+                    </button>
+                </div>
+
+                <!-- Cart & Profile -->
+                <div class="flex items-center gap-6">
+                    <button id="cart-btn" class="relative p-2 text-slate-300 hover:text-white transition-colors group">
+                        <i class="fa-solid fa-shopping-cart text-xl group-hover:scale-110 transition-transform"></i>
+                        <span id="cart-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-brand-purple rounded-full shadow-[0_0_10px_rgba(168,85,247,0.8)]">0</span>
+                    </button>
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center cursor-pointer border border-slate-600 hover:border-brand-accent transition-colors">
+                        <i class="fa-regular fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <main class="flex-grow pt-20">
+        <section class="relative h-[80vh] flex items-center justify-center overflow-hidden">
+            <div class="text-center z-10 px-4 max-w-4xl mx-auto">
+                <div class="inline-block mb-4 px-4 py-1 rounded-full border border-brand-accent/30 bg-brand-accent/10 backdrop-blur-md text-brand-accent text-sm font-semibold tracking-wider uppercase shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                    <i class="fa-solid fa-bolt mr-2"></i> AI-Powered Shopping Experience
+                </div>
+                <h1 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight drop-shadow-lg">
+                    Level Up Your <br>
+                    <span class="text-gradient">School Style</span>
+                </h1>
+                <p class="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto drop-shadow-md font-light">
+                    Discover intelligent apparel and high-tech stationery designed for the students of tomorrow. Analyzed and recommended by AI.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="#products-section" class="px-8 py-4 bg-white text-brand-dark rounded-full font-bold text-lg hover:bg-slate-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95">
+                        Explore Collection
+                    </a>
+                    <a href="#ai-picks" class="px-8 py-4 glass text-white border border-slate-600 rounded-full font-bold text-lg hover:border-brand-purple hover:text-brand-purple transition-all hover:scale-105 active:scale-95 group">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2 group-hover:animate-pulse"></i> AI Top Picks
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Fade to background transition -->
+            <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-brand-dark to-transparent"></div>
+        </section>
+
+        <!-- Featured Slider Section -->
+        <section id="ai-picks" class="py-16 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-end justify-between mb-8">
+                    <div>
+                        <h2 class="text-3xl font-bold flex items-center gap-3">
+                            <i class="fa-solid fa-microchip text-brand-purple"></i> 
+                            Trending Matrix
+                        </h2>
+                        <p class="text-slate-400 mt-2">Dynamically curated items based on campus algorithms.</p>
+                    </div>
+                    <div class="hidden md:flex gap-2">
+                        <button id="slide-left" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-slate-700 hover:text-brand-accent transition-colors">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button id="slide-right" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-slate-700 hover:text-brand-accent transition-colors">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slider Container -->
+                <div class="slider-container flex gap-6 overflow-x-auto pb-8 pt-4 px-2 -mx-2" id="featured-slider">
+                    <!-- Slider items injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Products Section -->
+        <section id="products-section" class="py-16 bg-slate-900/50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- Filters -->
+                <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                    <h2 class="text-3xl font-bold">Complete Inventory</h2>
+                    
+                    <div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar" id="category-filters">
+                        <button class="filter-btn active px-5 py-2 rounded-full text-sm font-semibold glass border-brand-accent text-white" data-filter="all">All</button>
+                        <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold glass hover:border-brand-accent transition-colors" data-filter="clothes">Apparel</button>
+                        <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold glass hover:border-brand-accent transition-colors" data-filter="hoodies">Hoodies</button>
+                        <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold glass hover:border-brand-accent transition-colors" data-filter="caps">Caps</button>
+                        <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold glass hover:border-brand-accent transition-colors" data-filter="stationery">Stationery</button>
+                    </div>
+                </div>
+
+                <!-- Product Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" id="product-grid">
+                    <!-- Products injected by JS -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-12 mt-auto z-10 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="col-span-1 md:col-span-2">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-brand-accent to-brand-purple flex items-center justify-center">
+                        <i class="fa-solid fa-cube text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-xl text-white">NexGen Merch</span>
+                </div>
+                <p class="text-slate-400 max-w-sm">The first school merchandise store fully integrated with AI recommendations and 3D spatial viewing.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-slate-400">
+                    <li><a href="#" class="hover:text-brand-accent transition-colors">About AI System</a></li>
+                    <li><a href="#" class="hover:text-brand-accent transition-colors">Size Guide</a></li>
+                    <li><a href="#" class="hover:text-brand-accent transition-colors">Shipping</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">Connect</h4>
+                <div class="flex gap-4 text-slate-400">
+                    <a href="#" class="hover:text-white transition-colors text-xl"><i class="fa-brands fa-discord"></i></a>
+                    <a href="#" class="hover:text-white transition-colors text-xl"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="#" class="hover:text-white transition-colors text-xl"><i class="fa-brands fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-sm">
+            &copy; 2026 NexGen School Merch. All protocols active.
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar Modal -->
+    <div id="cart-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300"></div>
+    
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-brand-dark z-[70] cart-closed shadow-[-10px_0_30px_rgba(0,0,0,0.5)] border-l border-slate-700 flex flex-col">
+        <!-- Cart Header -->
+        <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-shopping-cart text-brand-accent"></i> Your Loadout
+            </h2>
+            <button id="close-cart" class="w-8 h-8 rounded-full hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Cart Items Container -->
+        <div id="cart-items" class="flex-grow p-6 overflow-y-auto flex flex-col gap-4">
+            <!-- Empty State -->
+            <div id="cart-empty" class="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+                <i class="fa-solid fa-box-open text-5xl opacity-50"></i>
+                <p>Your loadout is currently empty.</p>
+                <button id="start-shopping" class="px-6 py-2 mt-2 rounded-full border border-slate-600 hover:border-brand-accent hover:text-brand-accent transition-colors">Initialize Shopping</button>
+            </div>
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Cart Footer -->
+        <div class="p-6 border-t border-slate-700 bg-slate-800/80 backdrop-blur-md">
+            <div class="flex justify-between items-center mb-4 text-lg">
+                <span class="text-slate-300">Subtotal</span>
+                <span class="font-bold text-white text-xl" id="cart-total">$0.00</span>
+            </div>
+            <button id="checkout-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-brand-accent to-brand-purple text-white font-bold text-lg hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all transform hover:scale-[1.02] active:scale-95 flex justify-center items-center gap-2">
+                <i class="fa-solid fa-lock text-sm"></i> Secure Checkout
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[100] bg-brand-light border border-brand-accent/50 text-white px-6 py-3 rounded-full shadow-[0_5px_15px_rgba(6,182,212,0.3)] flex items-center gap-3">
+        <i class="fa-solid fa-check-circle text-brand-accent"></i>
+        <span id="toast-msg">Item added to cart!</span>
+    </div>
+
+    <script>
+        // --- 1. Product Data ---
+        const products = [
+            {
+                id: 1,
+                name: "CyberCore Pullover Hoodie",
+                price: 55.00,
+                category: "hoodies",
+                isFeatured: true,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=400&q=80",
+                desc: "Thermo-regulated fabric with holographic emblem."
+            },
+            {
+                id: 2,
+                name: "Quantum Snapback Cap",
+                price: 24.50,
+                category: "caps",
+                isFeatured: true,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=400&q=80",
+                desc: "Lightweight, breathable with neon rim detailing."
+            },
+            {
+                id: 3,
+                name: "Neural Mesh Backpack",
+                price: 85.00,
+                category: "stationery", 
+                isFeatured: true,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=400&q=80",
+                desc: "Ergonomic load distribution & anti-theft zips."
+            },
+            {
+                id: 4,
+                name: "DataStream Varsity Jacket",
+                price: 110.00,
+                category: "clothes",
+                isFeatured: true,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=400&q=80",
+                desc: "Classic school spirit meets future-tech fabric."
+            },
+            {
+                id: 5,
+                name: "Smart-Ink Stylus Pen",
+                price: 35.00,
+                category: "stationery",
+                isFeatured: false,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1585336261022-680e295ce3fe?auto=format&fit=crop&w=400&q=80",
+                desc: "Syncs physical notes directly to your digital vault."
+            },
+            {
+                id: 6,
+                name: "Holo-Foil Notebook Set",
+                price: 18.00,
+                category: "stationery",
+                isFeatured: false,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?auto=format&fit=crop&w=400&q=80",
+                desc: "A5 grid notebooks with shifting prismatic covers."
+            },
+            {
+                id: 7,
+                name: "Glitch-Text Zip Hoodie",
+                price: 60.00,
+                category: "hoodies",
+                isFeatured: false,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1572495641004-28421ae52e52?auto=format&fit=crop&w=400&q=80",
+                desc: "Comfort fit with dynamic glitch logo print."
+            },
+            {
+                id: 8,
+                name: "Stealth Beanie",
+                price: 20.00,
+                category: "caps",
+                isFeatured: false,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1576871337622-98d48d1cf531?auto=format&fit=crop&w=400&q=80",
+                desc: "Thermal knit keeps you warm under the radar."
+            },
+            {
+                id: 9,
+                name: "AI-Optimized Geometry Box",
+                price: 22.00,
+                category: "stationery",
+                isFeatured: true,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1453738773917-9c30797131ee?auto=format&fit=crop&w=400&q=80",
+                desc: "Precision tools crafted from aerospace-grade aluminum."
+            },
+            {
+                id: 10,
+                name: "Hydro-Sync Water Bottle",
+                price: 28.00,
+                category: "stationery",
+                isFeatured: false,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=400&q=80",
+                desc: "Smart flask that tracks your daily hydration goals."
+            },
+            {
+                id: 11,
+                name: "NexGen Core T-Shirt",
+                price: 25.00,
+                category: "clothes",
+                isFeatured: false,
+                aiPick: true,
+                image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80",
+                desc: "Everyday staple with moisture-wicking nano-fibers."
+            },
+            {
+                id: 12,
+                name: "Nano-Tech Track Pants",
+                price: 45.00,
+                category: "clothes",
+                isFeatured: false,
+                aiPick: false,
+                image: "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?auto=format&fit=crop&w=400&q=80",
+                desc: "Ultra-stretch joggers for gym and casual wear."
+            }
+        ];
+
+        let cart = [];
+
+        // --- 2. DOM Elements ---
+        const sliderContainer = document.getElementById('featured-slider');
+        const gridContainer = document.getElementById('product-grid');
+        const cartBtn = document.getElementById('cart-btn');
+        const closeCartBtn = document.getElementById('close-cart');
+        const cartSidebar = document.getElementById('cart-sidebar');
+        const cartOverlay = document.getElementById('cart-overlay');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const cartEmpty = document.getElementById('cart-empty');
+        const cartCount = document.getElementById('cart-count');
+        const cartTotal = document.getElementById('cart-total');
+        const categoryFilters = document.querySelectorAll('.filter-btn');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        const navbar = document.getElementById('navbar');
+
+        // --- 3. Rendering Functions ---
+        
+        function generateProductHTML(product, isSlider = false) {
+            const aiBadge = product.aiPick ? 
+                `<div class="absolute top-3 left-3 bg-brand-purple/90 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded shadow-[0_0_10px_rgba(168,85,247,0.8)] z-10">
+                    <i class="fa-solid fa-robot mr-1"></i> AI PICK
+                </div>` : '';
+
+            const wrapperClass = isSlider ? 
+                `slider-item w-[280px] sm:w-[320px] flex-none` : 
+                `w-full`;
+
+            return `
+                <div class="${wrapperClass}">
+                    <div class="glass-card rounded-2xl overflow-hidden h-full flex flex-col card-3d group relative">
+                        ${aiBadge}
+                        <div class="relative h-48 sm:h-56 overflow-hidden bg-slate-800 flex justify-center items-center">
+                            <!-- Placeholder image with hover zoom -->
+                            <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-80 group-hover:opacity-100">
+                            
+                            <!-- Quick add overlay on desktop -->
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <button onclick="addToCart(${product.id})" class="px-6 py-2 bg-brand-accent text-white font-bold rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.6)] hover:bg-cyan-400">
+                                    Quick Add
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-5 flex flex-col flex-grow relative z-20 bg-gradient-to-b from-transparent to-brand-dark">
+                            <div class="text-xs text-brand-accent mb-1 uppercase tracking-wider font-semibold">${product.category}</div>
+                            <h3 class="text-lg font-bold text-white mb-2 leading-tight">${product.name}</h3>
+                            <p class="text-sm text-slate-400 mb-4 flex-grow line-clamp-2">${product.desc}</p>
+                            <div class="flex justify-between items-center mt-auto">
+                                <span class="text-xl font-extrabold text-white">$${product.price.toFixed(2)}</span>
+                                <button onclick="addToCart(${product.id})" class="w-10 h-10 rounded-full bg-slate-700 hover:bg-brand-accent text-white flex items-center justify-center transition-colors shadow-lg sm:hidden">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProducts(filter = 'all') {
+            // Render Slider (Featured)
+            if(filter === 'all') {
+                const featured = products.filter(p => p.isFeatured);
+                sliderContainer.innerHTML = featured.map(p => generateProductHTML(p, true)).join('');
+            }
+
+            // Render Grid
+            const filtered = filter === 'all' ? products : products.filter(p => p.category === filter);
+            
+            if (filtered.length === 0) {
+                gridContainer.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500"><i class="fa-solid fa-ghost text-4xl mb-4 block"></i> No items found in this sector.</div>`;
+            } else {
+                gridContainer.innerHTML = filtered.map(p => generateProductHTML(p, false)).join('');
+            }
+        }
+
+        // --- 4. Cart Logic ---
+
+        window.addToCart = function(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            updateCartUI();
+            showToast(`${product.name} added to loadout!`);
+            
+            // Small animation on cart icon
+            cartCount.classList.add('scale-150');
+            setTimeout(() => cartCount.classList.remove('scale-150'), 200);
+        };
+
+        window.removeFromCart = function(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartUI();
+        };
+
+        window.updateQuantity = function(productId, delta) {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    removeFromCart(productId);
+                } else {
+                    updateCartUI();
+                }
+            }
+        };
+
+        function updateCartUI() {
+            // Update badge
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            if (totalItems === 0) {
+                cartCount.classList.add('hidden');
+                cartEmpty.classList.remove('hidden');
+                cartItemsContainer.querySelectorAll('.cart-item-row').forEach(el => el.remove());
+                cartTotal.textContent = '$0.00';
+            } else {
+                cartCount.classList.remove('hidden');
+                cartEmpty.classList.add('hidden');
+                
+                // Build items list
+                const itemsHTML = cart.map(item => `
+                    <div class="cart-item-row flex gap-4 p-3 rounded-xl bg-slate-800/80 border border-slate-700 items-center">
+                        <img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover">
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-bold text-white line-clamp-1">${item.name}</h4>
+                            <div class="text-brand-accent text-sm font-bold">$${(item.price * item.quantity).toFixed(2)}</div>
+                            
+                            <div class="flex items-center gap-3 mt-2">
+                                <button onclick="updateQuantity(${item.id}, -1)" class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center hover:bg-slate-600 text-xs"><i class="fa-solid fa-minus"></i></button>
+                                <span class="text-sm w-4 text-center">${item.quantity}</span>
+                                <button onclick="updateQuantity(${item.id}, 1)" class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center hover:bg-slate-600 text-xs"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <button onclick="removeFromCart(${item.id})" class="text-slate-500 hover:text-red-400 p-2 transition-colors">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+
+                // Clear existing rows, append new ones
+                cartItemsContainer.querySelectorAll('.cart-item-row').forEach(el => el.remove());
+                cartItemsContainer.insertAdjacentHTML('beforeend', itemsHTML);
+
+                // Update Total
+                const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                cartTotal.textContent = `$${total.toFixed(2)}`;
+            }
+        }
+
+        function toggleCart() {
+            const isOpen = cartSidebar.classList.contains('cart-open');
+            if (isOpen) {
+                cartSidebar.classList.remove('cart-open');
+                cartSidebar.classList.add('cart-closed');
+                cartOverlay.classList.remove('opacity-100');
+                cartOverlay.classList.add('opacity-0');
+                setTimeout(() => { cartOverlay.classList.add('hidden'); }, 300);
+            } else {
+                cartOverlay.classList.remove('hidden');
+                // Trigger reflow
+                void cartOverlay.offsetWidth;
+                cartSidebar.classList.remove('cart-closed');
+                cartSidebar.classList.add('cart-open');
+                cartOverlay.classList.remove('opacity-0');
+                cartOverlay.classList.add('opacity-100');
+            }
+        }
+
+        // --- Toast ---
+        let toastTimeout;
+        function showToast(message) {
+            toastMsg.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // --- 5. Event Listeners ---
+        
+        cartBtn.addEventListener('click', toggleCart);
+        closeCartBtn.addEventListener('click', toggleCart);
+        cartOverlay.addEventListener('click', toggleCart);
+        document.getElementById('start-shopping').addEventListener('click', toggleCart);
+        
+        document.getElementById('checkout-btn').addEventListener('click', () => {
+            if(cart.length === 0) {
+                showToast("Your loadout is empty.");
+                return;
+            }
+            // Replacing alert with toast
+            showToast("Processing AI Checkout Sequence... (Demo)");
+            setTimeout(() => {
+                cart = [];
+                updateCartUI();
+                toggleCart();
+                showToast("Checkout complete. Items dispatched.");
+            }, 1500);
+        });
+
+        // Category Filters
+        categoryFilters.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update active state
+                categoryFilters.forEach(b => {
+                    b.classList.remove('border-brand-accent', 'text-white');
+                    b.classList.add('text-slate-300');
+                });
+                e.target.classList.add('border-brand-accent', 'text-white');
+                e.target.classList.remove('text-slate-300');
+                
+                const filter = e.target.getAttribute('data-filter');
+                
+                // Animate out
+                gridContainer.style.opacity = 0;
+                setTimeout(() => {
+                    renderProducts(filter);
+                    // Animate in
+                    gridContainer.style.opacity = 1;
+                }, 200);
+            });
+        });
+
+        gridContainer.style.transition = 'opacity 0.3s ease';
+
+        // Slider Controls
+        const slideLeft = document.getElementById('slide-left');
+        const slideRight = document.getElementById('slide-right');
+        
+        if (slideLeft && slideRight) {
+            slideLeft.addEventListener('click', () => {
+                sliderContainer.scrollBy({ left: -320, behavior: 'smooth' });
+            });
+            slideRight.addEventListener('click', () => {
+                sliderContainer.scrollBy({ left: 320, behavior: 'smooth' });
+            });
+        }
+
+        // Navbar Scroll Effect
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                navbar.classList.add('shadow-lg', 'bg-brand-dark/90');
+                navbar.classList.remove('bg-transparent');
+            } else {
+                navbar.classList.remove('shadow-lg', 'bg-brand-dark/90');
+                navbar.classList.add('bg-transparent');
+            }
+        });
+
+        // --- 6. Three.js Background Implementation ---
+        function initThreeJS() {
+            const container = document.getElementById('bg-canvas');
+            const scene = new THREE.Scene();
+            
+            // Fog for depth
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.0015);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Create objects (Nodes/Merch representation)
+            const objects = [];
+            
+            // Geometries
+            const boxGeo = new THREE.BoxGeometry(2, 2, 2);
+            const sphereGeo = new THREE.IcosahedronGeometry(1.5, 0);
+            const torusGeo = new THREE.TorusGeometry(1.5, 0.4, 16, 100);
+
+            // Materials
+            const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x06b6d4, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.15
+            });
+            
+            const solidMaterial = new THREE.MeshPhongMaterial({
+                color: 0xa855f7,
+                flatShading: true,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            // Generate random objects
+            for (let i = 0; i < 40; i++) {
+                let mesh;
+                const rand = Math.random();
+                if (rand < 0.33) mesh = new THREE.Mesh(boxGeo, wireframeMaterial);
+                else if (rand < 0.66) mesh = new THREE.Mesh(sphereGeo, solidMaterial);
+                else mesh = new THREE.Mesh(torusGeo, wireframeMaterial);
+
+                // Position randomly spread out
+                mesh.position.x = (Math.random() - 0.5) * 100;
+                mesh.position.y = (Math.random() - 0.5) * 100;
+                mesh.position.z = (Math.random() - 0.5) * 50 - 10;
+
+                // Random rotation
+                mesh.rotation.x = Math.random() * Math.PI;
+                mesh.rotation.y = Math.random() * Math.PI;
+
+                // Add custom properties for animation
+                mesh.userData = {
+                    rotSpeedX: (Math.random() - 0.5) * 0.01,
+                    rotSpeedY: (Math.random() - 0.5) * 0.01,
+                    floatSpeed: (Math.random() * 0.02) + 0.005,
+                    floatOffset: Math.random() * Math.PI * 2
+                };
+
+                scene.add(mesh);
+                objects.push(mesh);
+            }
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0x06b6d4, 2, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            const pointLight2 = new THREE.PointLight(0xa855f7, 2, 100);
+            pointLight2.position.set(-10, -10, 10);
+            scene.add(pointLight2);
+
+            // Mouse interaction
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+
+            const windowHalfX = window.innerWidth / 2;
+            const windowHalfY = window.innerHeight / 2;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - windowHalfX);
+                mouseY = (event.clientY - windowHalfY);
+            });
+
+            // Animation Loop
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.01;
+
+                targetX = mouseX * 0.001;
+                targetY = mouseY * 0.001;
+
+                // Smooth camera movement
+                camera.position.x += (mouseX * 0.01 - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY * 0.01 - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+
+                // Animate objects
+                objects.forEach(obj => {
+                    obj.rotation.x += obj.userData.rotSpeedX;
+                    obj.rotation.y += obj.userData.rotSpeedY;
+                    // Floating effect
+                    obj.position.y += Math.sin(time * obj.userData.floatSpeed + obj.userData.floatOffset) * 0.05;
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            // Handle Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        // --- 7. Initialization ---
+        window.onload = function() {
+            renderProducts();
+            updateCartUI();
+            
+            // Only init Three.js if not on a very small mobile device to save performance, 
+            // or init unconditionally. We'll init unconditionally for the cool effect.
+            initThreeJS();
+        };
+
+    </script>
+</body>
+</html>
